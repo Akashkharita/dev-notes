@@ -1,10 +1,14 @@
 {
   "2026-06-01": {
     "tags": [
-      "tooling",
-      "GitHub-Actions",
-      "dev-infrastructure"
+      "PhaseNet",
+      "SeisBench",
+      "benchmark",
+      "dataset-download",
+      "waveform-processing",
+      "Cascadia-HPC",
+      "recall-analysis"
     ],
-    "tldr": "Spent the full day debugging a GitHub Actions workflow in `dev-notes` to enable PAT-authenticated fetching of private repos; no research experiments were run."
+    "tldr": "Completed a full audit of the SeisBench benchmark dataset pool (12 datasets, ~8.6M total traces), locked in stratification bins for balanced sampling, and identified `instancecounts` S-label gap (61.6% coverage) and missing `pisdl` as key issues to resolve before benchmark construction."
   }
 }
