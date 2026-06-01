@@ -1,0 +1,11 @@
+{
+  "2026-06-01": {
+    "tags": [
+      "QuakeXNet",
+      "SeisBench",
+      "paper-writing",
+      "visualization"
+    ],
+    "tldr": "Infrastructure-only day \u2014 set up dev-notes repo with GitHub workflows and root HTML serving; no experimental results recorded."
+  }
+}
