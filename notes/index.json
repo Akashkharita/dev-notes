@@ -1,6 +1,15 @@
 {
   "2026-06-01": {
-    "tags": [],
-    "tldr": ""
+    "tags": [
+      "PhaseNet",
+      "SeisBench",
+      "benchmark",
+      "dataset-download",
+      "waveform-processing",
+      "recall-analysis",
+      "visualization",
+      "Cascadia-HPC"
+    ],
+    "tldr": "Built a structured daily research logging system (dev-notes) and completed a full audit of SeisBench benchmark datasets \u2014 enumerating 12+ datasets, 16 PhaseNet weight sets, and P/S arrival coverage statistics \u2014 in preparation for PhaseNet generalization evaluation starting tomorrow."
   }
 }
