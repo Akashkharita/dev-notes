@@ -53,6 +53,15 @@ def get_repos():
             break
         repos.extend(batch)
         page += 1
+    # Hardcode org repos you're a member of
+    EXTRA_REPOS = [
+        "Denolle-Lab/phasenet-retrain",
+        # add more org repos here if needed
+    ]
+    for repo_name in EXTRA_REPOS:
+        r = requests.get(f"https://api.github.com/repos/{repo_name}", headers=GH)
+        if r.status_code == 200:
+            repos.append(r.json())
     return repos
 
 def get_commits(repo_full_name):
