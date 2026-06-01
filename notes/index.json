@@ -1,0 +1,11 @@
+{
+  "2026-06-01": {
+    "tags": [
+      "`QuakeXNet`",
+      "`PhaseNet`",
+      "`Cascadia-HPC`",
+      "`paper-writing`"
+    ],
+    "tldr": "Light infrastructure day \u2014 set up GitHub workflows and fixed a model name in the dev-notes repo, no experimental results captured."
+  }
+}
