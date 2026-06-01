@@ -1,11 +1,11 @@
 {
   "2026-06-01": {
     "tags": [
-      "QuakeXNet",
-      "SeisBench",
-      "paper-writing",
-      "visualization"
+      "`QuakeXNet`",
+      "`PhaseNet`",
+      "`Cascadia-HPC`",
+      "`paper-writing`"
     ],
-    "tldr": "Infrastructure-only day \u2014 set up dev-notes repo with GitHub workflows and root HTML serving; no experimental results recorded."
+    "tldr": "Light infrastructure day \u2014 set up GitHub workflows and fixed a model name in the dev-notes repo, no experimental results captured."
   }
 }
