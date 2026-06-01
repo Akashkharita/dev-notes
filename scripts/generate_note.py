@@ -46,7 +46,7 @@ def get_repos():
     repos, page = [], 1
     while True:
         r = requests.get(f"https://api.github.com/users/{GITHUB_USERNAME}/repos",
-                         headers=GH, params={"per_page": 100, "page": page, "type": "owner"})
+                         headers=GH, params={"per_page": 100, "page": page, "type": "all"})
         r.raise_for_status()
         batch = r.json()
         if not batch:
