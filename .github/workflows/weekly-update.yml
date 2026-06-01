@@ -1,0 +1,36 @@
+name: Weekly Advisor Update
+
+on:
+  schedule:
+    - cron: '0 15 * * 5'   # Fridays at 3 PM UTC (8 AM Pacific)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  advisor-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Generate advisor update
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/weekly_update.py
+
+      - name: Commit update draft
+        run: |
+          git config user.name "research-notes bot"
+          git config user.email "actions@github.com"
+          git add advisor-updates/
+          git diff --staged --quiet || git commit -m "📬 Advisor update $(date -u +%Y-%m-%d)"
+          git push
