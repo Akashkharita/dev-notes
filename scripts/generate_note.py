@@ -1,16 +1,14 @@
 """
 generate_note.py  —  daily research note generator
-Pulls from: GitHub commits, Jupyter notebook diffs, Slurm job logs
+Pulls from: GitHub commits, Jupyter notebook diffs, Slurm job logs, daily brain dump issue
 Writes: notes/YYYY-MM-DD.md  (research-structured, Claude-generated)
 """
 
 import os
 import json
-import base64
-import hashlib
 import requests
 import anthropic
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 try:
     import paramiko
@@ -24,13 +22,14 @@ try:
 except ImportError:
     HAS_NB = False
 
-# ── Config ──────────────────────────────────────────────────────────────────
+# ── Config ───────────────────────────────────────────────────────────────────
 GITHUB_USERNAME  = os.environ["GITHUB_USERNAME"]
 GITHUB_TOKEN     = os.environ["GITHUB_TOKEN"]
 ANTHROPIC_KEY    = os.environ["ANTHROPIC_API_KEY"]
 CASCADIA_HOST    = os.environ.get("CASCADIA_HOST", "")
 CASCADIA_USER    = os.environ.get("CASCADIA_USER", "")
-CASCADIA_SSH_KEY = os.environ.get("CASCADIA_SSH_KEY", "")   # private key contents
+CASCADIA_SSH_KEY = os.environ.get("CASCADIA_SSH_KEY", "")
+NOTES_REPO       = f"{GITHUB_USERNAME}/dev-notes"   # repo where issues are filed
 
 TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 SINCE = f"{TODAY}T00:00:00Z"
@@ -40,40 +39,44 @@ GH = {"Authorization": f"Bearer {GITHUB_TOKEN}",
       "Accept": "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28"}
 
-# ── GitHub commits ───────────────────────────────────────────────────────────
+# ── GitHub commits ────────────────────────────────────────────────────────────
 
 def get_repos():
     repos, page = [], 1
     while True:
-        r = requests.get(f"https://api.github.com/users/{GITHUB_USERNAME}/repos",
-                         headers=GH, params={"per_page": 100, "page": page, "type": "all"})
+        r = requests.get("https://api.github.com/user/repos", headers=GH,
+                         params={"per_page": 100, "page": page,
+                                 "type": "all", "affiliation": "owner,collaborator,organization_member"})
         r.raise_for_status()
         batch = r.json()
         if not batch:
             break
         repos.extend(batch)
         page += 1
-    # Hardcode org repos you're a member of
+
+    # Hardcoded private org repos not returned by the listing API
     EXTRA_REPOS = [
         "Denolle-Lab/phasenet-retrain",
-        # add more org repos here if needed
     ]
     for repo_name in EXTRA_REPOS:
-        r = requests.get(f"https://api.github.com/repos/{repo_name}", headers=GH)
-        if r.status_code == 200:
-            repos.append(r.json())
+        if not any(r["full_name"] == repo_name for r in repos):
+            r = requests.get(f"https://api.github.com/repos/{repo_name}", headers=GH)
+            if r.status_code == 200:
+                repos.append(r.json())
     return repos
+
 
 def get_commits(repo_full_name):
     r = requests.get(f"https://api.github.com/repos/{repo_full_name}/commits",
                      headers=GH, params={"author": GITHUB_USERNAME,
                                           "since": SINCE, "until": UNTIL, "per_page": 100})
-    if r.status_code == 409:
+    if r.status_code in (409, 404):
         return []
     r.raise_for_status()
     return [{"sha": c["sha"][:7], "message": c["commit"]["message"].strip(),
              "url": c["html_url"], "time": c["commit"]["author"]["date"]}
             for c in r.json()]
+
 
 def collect_commits():
     activity = {}
@@ -87,22 +90,78 @@ def collect_commits():
             }
     return activity
 
-# ── Jupyter notebook diffs ──────────────────────────────────────────────────
+# ── Daily brain dump issue ────────────────────────────────────────────────────
+
+def get_brain_dump():
+    """
+    Reads the most recent GitHub issue labelled 'daily-log' created today.
+    Returns a dict of parsed sections, or empty dict if none found.
+    """
+    r = requests.get(f"https://api.github.com/repos/{NOTES_REPO}/issues",
+                     headers=GH, params={"labels": "daily-log", "state": "open",
+                                          "per_page": 10, "sort": "created", "direction": "desc"})
+    if r.status_code != 200:
+        return {}
+
+    issues = r.json()
+    # Find one created today
+    today_issues = [i for i in issues if i["created_at"].startswith(TODAY)]
+    if not today_issues:
+        # Also check closed issues (in case user closed it)
+        r2 = requests.get(f"https://api.github.com/repos/{NOTES_REPO}/issues",
+                          headers=GH, params={"labels": "daily-log", "state": "closed",
+                                               "per_page": 10, "sort": "created", "direction": "desc"})
+        if r2.status_code == 200:
+            today_issues = [i for i in r2.json() if i["created_at"].startswith(TODAY)]
+
+    if not today_issues:
+        print("  [Brain dump] No issue found for today")
+        return {}
+
+    issue = today_issues[0]
+    body = issue.get("body", "")
+    print(f"  [Brain dump] Found issue #{issue['number']}: {issue['title']}")
+
+    # Parse the structured form fields from the issue body
+    # GitHub renders form fields as "### Field Label\n\nValue\n\n"
+    sections = {}
+    current_key = None
+    current_lines = []
+
+    for line in body.split("\n"):
+        if line.startswith("### "):
+            if current_key:
+                sections[current_key] = "\n".join(current_lines).strip()
+            current_key = line.replace("### ", "").strip()
+            current_lines = []
+        elif current_key:
+            current_lines.append(line)
+
+    if current_key:
+        sections[current_key] = "\n".join(current_lines).strip()
+
+    # Filter out empty/placeholder values
+    cleaned = {}
+    for k, v in sections.items():
+        if v and v != "_No response_" and v.strip():
+            cleaned[k] = v.strip()
+
+    return cleaned
+
+
+# ── Jupyter notebook outputs ──────────────────────────────────────────────────
 
 def get_notebook_changes():
-    """Find .ipynb files changed today and extract new/changed output cells."""
     if not HAS_NB:
         return []
 
     changes = []
     for repo in get_repos():
-        # Get commits for today
         commits = get_commits(repo["full_name"])
         if not commits:
             continue
 
         for commit in commits:
-            # Get files changed in this commit
             r = requests.get(f"https://api.github.com/repos/{repo['full_name']}/commits/{commit['sha']}",
                              headers=GH)
             if r.status_code != 200:
@@ -113,9 +172,9 @@ def get_notebook_changes():
                 if not f["filename"].endswith(".ipynb"):
                     continue
 
-                # Fetch the notebook content
-                raw_r = requests.get(f"https://raw.githubusercontent.com/{repo['full_name']}/main/{f['filename']}",
-                                     headers=GH)
+                raw_r = requests.get(
+                    f"https://raw.githubusercontent.com/{repo['full_name']}/main/{f['filename']}",
+                    headers=GH)
                 if raw_r.status_code != 200:
                     continue
 
@@ -124,7 +183,6 @@ def get_notebook_changes():
                 except Exception:
                     continue
 
-                # Extract output cells that have text/print results
                 outputs = []
                 for cell in nb.cells:
                     if cell.cell_type != "code":
@@ -136,27 +194,24 @@ def get_notebook_changes():
                         elif output.get("output_type") in ("display_data", "execute_result"):
                             text = "".join(output.get("data", {}).get("text/plain", []))
                         if text.strip():
-                            outputs.append(text.strip()[:500])  # cap length
+                            outputs.append(text.strip()[:500])
 
                 if outputs:
                     changes.append({
                         "repo": repo["full_name"],
                         "notebook": f["filename"],
                         "commit": commit["sha"],
-                        "outputs": outputs[:10],  # top 10 outputs
+                        "outputs": outputs[:10],
                     })
 
     return changes
 
-# ── Slurm job logs from Cascadia ────────────────────────────────────────────
+# ── Slurm logs ────────────────────────────────────────────────────────────────
 
 def get_slurm_jobs():
-    """SSH into Cascadia and pull today's completed Slurm jobs."""
     if not HAS_SSH or not CASCADIA_HOST or not CASCADIA_SSH_KEY:
-        return []
-
+        return {}
     try:
-        # Write key to temp file
         key_path = "/tmp/cascadia_key"
         with open(key_path, "w") as f:
             f.write(CASCADIA_SSH_KEY)
@@ -167,39 +222,37 @@ def get_slurm_jobs():
         key = paramiko.RSAKey.from_private_key_file(key_path)
         ssh.connect(CASCADIA_HOST, username=CASCADIA_USER, pkey=key, timeout=15)
 
-        # sacct: jobs that ended today
         cmd = f"sacct -u {CASCADIA_USER} --starttime={TODAY} --endtime={TODAY}T23:59:59 " \
               f"--format=JobID,JobName,State,Elapsed,CPUTime,ExitCode --noheader 2>/dev/null | head -50"
         _, stdout, _ = ssh.exec_command(cmd)
         sacct_output = stdout.read().decode().strip()
 
-        # Also grab last 20 lines of any slurm-*.out files modified today
-        cmd2 = f"find ~/ -name 'slurm-*.out' -newer $(date -d '{TODAY}' +%Y-%m-%d 2>/dev/null || date -j -f '%Y-%m-%d' '{TODAY}' +%Y-%m-%d) -maxdepth 5 2>/dev/null | head -5 | xargs -I{{}} tail -20 {{}}"
-        _, stdout2, _ = ssh.exec_command(cmd2)
-        log_tails = stdout2.read().decode().strip()
-
         ssh.close()
         os.remove(key_path)
-
-        return {"sacct": sacct_output, "log_tails": log_tails}
-
+        return {"sacct": sacct_output}
     except Exception as e:
-        print(f"  [Slurm] SSH failed: {e} — skipping")
+        print(f"  [Slurm] SSH failed: {e}")
         return {}
 
-# ── Claude note generation ───────────────────────────────────────────────────
+# ── Claude note generation ────────────────────────────────────────────────────
 
-def generate_note(commits, notebooks, slurm):
+def generate_note(commits, notebooks, slurm, brain_dump):
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
-    has_anything = commits or notebooks or slurm
+    has_anything = commits or notebooks or slurm or brain_dump
 
     if not has_anything:
         return (f"# {TODAY}\n\n**No activity recorded today.**\n\n"
                 "---\n*Auto-generated by research-notes bot.*\n"), []
 
-    # Build context block
+    # ── Build context ─────────────────────────────────────────────────────────
     sections = []
+
+    if brain_dump:
+        lines = ["### 📝 Researcher's own words (daily brain dump — highest priority context)"]
+        for field, value in brain_dump.items():
+            lines.append(f"\n**{field}**\n{value}")
+        sections.append("\n".join(lines))
 
     if commits:
         lines = ["### GitHub commits"]
@@ -210,75 +263,80 @@ def generate_note(commits, notebooks, slurm):
         sections.append("\n".join(lines))
 
     if notebooks:
-        lines = ["### Jupyter notebook outputs (experiment results)"]
+        lines = ["### Jupyter notebook outputs"]
         for nb in notebooks:
             lines.append(f"\n**{nb['notebook']}** in {nb['repo']}")
             for o in nb["outputs"]:
                 lines.append(f"  ```\n  {o}\n  ```")
         sections.append("\n".join(lines))
 
-    if slurm:
-        lines = ["### Slurm jobs on Cascadia HPC"]
-        if slurm.get("sacct"):
-            lines.append("```\n" + slurm["sacct"] + "\n```")
-        if slurm.get("log_tails"):
-            lines.append("Recent job log tails:\n```\n" + slurm["log_tails"][:1500] + "\n```")
-        sections.append("\n".join(lines))
+    if slurm and slurm.get("sacct"):
+        sections.append(f"### Slurm jobs on Cascadia\n```\n{slurm['sacct']}\n```")
 
     context = "\n\n".join(sections)
 
+    # ── Prompt ────────────────────────────────────────────────────────────────
+    brain_dump_instruction = ""
+    if brain_dump:
+        brain_dump_instruction = """
+IMPORTANT: The researcher filled in a daily brain dump form today. This is the most valuable 
+input — it contains their own words about what they were thinking, what failed, key numbers, 
+and decisions. Prioritize this heavily. Quote their exact words where impactful. The commits 
+and notebook outputs provide supporting technical detail."""
+
     prompt = f"""You are a research assistant helping Akash Kharita keep a structured lab notebook.
 
-Background on Akash:
+Background:
 - PhD researcher, Earth & Space Sciences, University of Washington
 - Advisors: Marine Denolle (primary), Alexander Hutko, J. Renate Hartog, Stephen Malone (PNSN)
 - Research: seismic event detection/classification in the Pacific Northwest using ML
 - Key projects: QuakeXNet (CNN classifier: eq/px/su/no), PhaseNet generalization benchmark,
-  Mount Rainier catalog (v3: 1.4M clusters), enveloc location pipeline,
-  SeisBench dataset work on Cascadia HPC cluster
-- Key concepts: SU (surface events), PX (explosions/summit), EQ (earthquakes), 
-  PhaseNet, SeisBench, PNSN, enveloc, Cascadia HPC, SEISBENCH_CACHE_ROOT
+  Mount Rainier catalog (v3: 1.4M clusters), enveloc location pipeline, SeisBench datasets
+- Key concepts: SU (surface events), PX (explosions), EQ (earthquakes), PhaseNet, SeisBench,
+  PNSN, enveloc, Cascadia HPC, teleseismic vs local distance bins
+{brain_dump_instruction}
 
-Today is {TODAY}. Below is everything captured today. Write a structured research lab note in Markdown.
-
-The note MUST follow this exact structure (use these exact headings):
+Today is {TODAY}. Write a structured research lab note in Markdown using EXACTLY these headings:
 
 ## 🔬 What I tested / ran
-Bullet list of concrete actions — experiments run, code written, jobs submitted. Be specific.
+Concrete actions — experiments, code written, jobs submitted. Be specific with numbers.
 
 ## 📊 Results & findings
-The most important thing in the note. Extract any numbers, metrics, outcomes from notebook outputs or commit messages. If there are no clear results, say so explicitly.
+THE most important section. Extract every number, metric, outcome. If the brain dump has 
+specific numbers, make sure they appear here verbatim. Don't vague-ify concrete results.
 
-## 💡 Hypotheses & interpretations  
-What do today's results suggest? Any new ideas, model behavior explanations, or pattern observations.
+## 💡 Hypotheses & interpretations
+What do results suggest? Include the researcher's own reasoning from the brain dump if present.
 
-## ✅ Decisions made
-Any explicit choices about direction, methodology, or next steps that were locked in today.
+## ✅ Decisions made and why
+Explicit choices made today AND the reasoning behind them. This is crucial for future recall.
+
+## ❌ What failed / surprised
+Failures, dead ends, unexpected behavior. Be honest — this is a private lab notebook.
 
 ## 🚧 Blockers & open questions
-What's unclear, broken, or waiting on something.
+What's unclear, broken, or waiting on something external.
 
-## 📅 Plan for tomorrow
-2-4 concrete next actions, in priority order.
+## 📅 Tomorrow's priority
+The single most important thing to do tomorrow, then 2-3 supporting tasks.
 
 ## 🏷️ Topics
-Comma-separated list of topic tags relevant to today's work, chosen from:
-PhaseNet, QuakeXNet, enveloc, SeisBench, PNSN, Cascadia-HPC, Mount-Rainier-catalog,
-recall-analysis, benchmark, teleseismic, waveform-processing, labelerrors, 
-dataset-download, visualization, paper-writing, advisor-meeting
+Comma-separated tags from: PhaseNet, QuakeXNet, enveloc, SeisBench, PNSN, Cascadia-HPC,
+Mount-Rainier-catalog, recall-analysis, benchmark, teleseismic, waveform-processing,
+labelerrors, dataset-download, visualization, paper-writing, advisor-meeting
 Add new tags if needed.
 
-After the topics line, add one final line:
-**TL;DR:** [One sentence summary of the most important thing that happened today]
+**TL;DR:** [One sentence — the single most important thing that happened today]
 
 ---
+Rules:
+- Do NOT add a date heading
+- Do NOT add preamble before the first heading  
+- If a section has nothing to say, write "Nothing to report." — don't omit it
+- Use the researcher's own words from the brain dump where possible
+- Be specific — numbers, model names, dataset names, exact error messages
 
-DO NOT add a date heading (added automatically).
-DO NOT add preamble before the first heading.
-Be concise and technical — this is a lab notebook, not a blog post.
-Extract actual numbers from the data wherever possible.
-
-Today's activity:
+Today's data:
 {context}
 """
 
@@ -289,14 +347,13 @@ Today's activity:
     )
     body = msg.content[0].text.strip()
 
-    # Extract tags for metadata
+    # Extract tags
     tags = []
     for line in body.split("\n"):
-        if line.startswith("## 🏷️") or "Topics" in line:
-            next_lines = body.split(line)
-            if len(next_lines) > 1:
-                tag_line = next_lines[1].strip().split("\n")[0]
-                tags = [t.strip() for t in tag_line.split(",") if t.strip()]
+        if "🏷️" in line or "Topics" in line:
+            idx = body.find(line)
+            after = body[idx + len(line):].strip().split("\n")[0]
+            tags = [t.strip() for t in after.split(",") if t.strip()]
             break
 
     note = f"# {TODAY}\n\n{body}\n\n---\n*Auto-generated · [GitHub](https://github.com/{GITHUB_USERNAME})*\n"
@@ -309,14 +366,12 @@ def write_note(note, tags):
     with open(path, "w") as f:
         f.write(note)
 
-    # Also write/update notes-index.json for the site
     index_path = "notes/index.json"
     index = {}
     if os.path.exists(index_path):
         with open(index_path) as f:
             index = json.load(f)
 
-    # Extract TL;DR
     tldr = ""
     for line in note.split("\n"):
         if line.startswith("**TL;DR:**"):
@@ -347,8 +402,12 @@ def main():
     slurm = get_slurm_jobs()
     print(f"  Slurm data: {'yes' if slurm else 'unavailable'}")
 
+    print("  Reading daily brain dump issue...")
+    brain_dump = get_brain_dump()
+    print(f"  Brain dump: {'found' if brain_dump else 'none filed today'}")
+
     print("  Calling Claude...")
-    note, tags = generate_note(commits, notebooks, slurm)
+    note, tags = generate_note(commits, notebooks, slurm, brain_dump)
     write_note(note, tags)
     print("Done.")
 

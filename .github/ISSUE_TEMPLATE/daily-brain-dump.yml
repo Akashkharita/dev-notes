@@ -1,0 +1,66 @@
+name: 📓 Daily Brain Dump
+description: 2-minute end-of-day research log. Gets automatically woven into tonight's note.
+labels: ["daily-log"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill this in at the end of your day — takes 2-3 minutes. The nightly Action will read this and combine it with your commits and notebook outputs to generate a much richer research note.
+
+  - type: textarea
+    id: what-worked
+    attributes:
+      label: ✅ What actually worked today?
+      description: Results, findings, things that went as expected or better.
+      placeholder: "e.g. ETHZ weights dropped P-MAE from 2.8s to 1.9s on local events, much better than neic baseline"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-failed
+    attributes:
+      label: ❌ What failed or surprised you?
+      description: Errors, unexpected results, dead ends. Be specific.
+      placeholder: "e.g. jma weights completely fail on M>6 events, loss spikes after epoch 3 — probably learning rate too high"
+    validations:
+      required: false
+
+  - type: textarea
+    id: key-numbers
+    attributes:
+      label: 📊 Key numbers / results
+      description: Any concrete metrics, timings, counts, or measurements from today.
+      placeholder: |
+        e.g.
+        - P-MAE: 1.9s (ETHZ), 2.1s (neic), 3.3s (jma) on 0-150km bin
+        - Dataset: 8.2M traces across 12 SeisBench datasets
+        - Slurm job ran 4.2hrs, processed 45k waveforms
+    validations:
+      required: false
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 💡 Decisions made and why
+      description: What choices did you make today and what was your reasoning?
+      placeholder: "e.g. Decided to drop GEOFON from benchmark — it's 90% teleseismic and skews distance bin stats. Will use NEIC instead for far-field coverage."
+    validations:
+      required: false
+
+  - type: textarea
+    id: tomorrow
+    attributes:
+      label: 📅 Tomorrow's #1 priority
+      description: One concrete thing you want to accomplish tomorrow.
+      placeholder: "e.g. Run PhaseNet fine-tuning on PNW subset with ETHZ weights as starting point"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 🧠 Anything else? (bigger picture thoughts, open questions, ideas)
+      description: Optional — anything that doesn't fit above.
+      placeholder: "e.g. Starting to think the teleseismic failure isn't a model problem but a data labeling issue — Ts-Tp distributions look wrong for NEIC traces"
+    validations:
+      required: false
