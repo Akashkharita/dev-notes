@@ -1,11 +1,11 @@
 {
   "2026-06-01": {
     "tags": [
-      "`QuakeXNet`",
-      "`PhaseNet`",
-      "`Cascadia-HPC`",
-      "`paper-writing`"
+      "Cascadia-HPC",
+      "paper-writing",
+      "QuakeXNet",
+      "benchmark"
     ],
-    "tldr": "Light infrastructure day \u2014 set up GitHub workflows and fixed a model name in the dev-notes repo, no experimental results captured."
+    "tldr": "Today was entirely infrastructure work \u2014 added GitHub Actions workflows, fixed PAT auth for private repo access, and configured `index.html` serving in the dev-notes repo; no research experiments ran."
   }
 }
