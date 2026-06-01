@@ -1,15 +1,6 @@
 {
   "2026-06-01": {
-    "tags": [
-      "PhaseNet",
-      "SeisBench",
-      "benchmark",
-      "Cascadia-HPC",
-      "dataset-download",
-      "waveform-processing",
-      "visualization",
-      "recall-analysis"
-    ],
-    "tldr": "Built the benchmark dataset characterization notebook for PhaseNet retraining, inventorying 12+ SeisBench datasets totaling >8M traces with P/S coverage stats and physics distribution plots, while also debugging the dev-notes GitHub Actions workflow for private repo access."
+    "tags": [],
+    "tldr": ""
   }
 }
