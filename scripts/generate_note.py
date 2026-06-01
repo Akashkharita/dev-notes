@@ -46,7 +46,7 @@ def get_repos():
     while True:
         r = requests.get("https://api.github.com/user/repos", headers=GH,
                          params={"per_page": 100, "page": page,
-                                 "type": "all", "affiliation": "owner,collaborator,organization_member"})
+                                 "affiliation": "owner,collaborator,organization_member"})
         r.raise_for_status()
         batch = r.json()
         if not batch:
