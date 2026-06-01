@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akash's Research Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+:root {
+  --bg: #0d0d0d; --surface: #141414; --surface2: #1c1c1c; --border: #2a2a2a;
+  --text: #e8e6e0; --muted: #6b6b6b; --dim: #3a3a3a;
+  --accent: #4ade80;   /* seismic green */
+  --accent2: #60a5fa;  /* wave blue */
+  --accent3: #f59e0b;  /* result amber */
+  --red: #f87171;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --nav-h: 48px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+/* ── Top nav ── */
+#nav {
+  height: var(--nav-h); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 0; flex-shrink: 0;
+  background: var(--surface);
+}
+#nav-logo { font-family: var(--mono); font-size: 13px; color: var(--accent); margin-right: 28px; letter-spacing: 0.04em; }
+.nav-tab {
+  height: var(--nav-h); padding: 0 16px; font-size: 12px; font-weight: 500;
+  color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px;
+  border-bottom: 2px solid transparent; transition: color 0.15s; letter-spacing: 0.03em;
+  text-transform: uppercase; background: none; border-left: none; border-right: none; border-top: none;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+#nav-search {
+  margin-left: auto; padding: 6px 12px; font-size: 12px; font-family: var(--mono);
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg);
+  color: var(--text); outline: none; width: 200px;
+}
+#nav-search:focus { border-color: var(--accent); }
+#chat-open-btn {
+  margin-left: 12px; padding: 6px 14px; font-size: 12px; font-weight: 500;
+  background: var(--accent); color: #000; border: none; border-radius: 4px;
+  cursor: pointer; font-family: var(--sans); letter-spacing: 0.02em;
+}
+#chat-open-btn:hover { background: #86efac; }
+
+/* ── Main layout ── */
+#workspace { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Sidebar ── */
+#sidebar {
+  width: 240px; min-width: 240px; border-right: 1px solid var(--border);
+  background: var(--surface); display: flex; flex-direction: column; overflow: hidden;
+}
+#sidebar-inner { flex: 1; overflow-y: auto; padding: 8px; }
+.day-item {
+  padding: 10px 10px; border-radius: 4px; cursor: pointer;
+  margin-bottom: 1px; border-left: 2px solid transparent; transition: all 0.1s;
+}
+.day-item:hover { background: var(--surface2); }
+.day-item.active { background: var(--surface2); border-left-color: var(--accent); }
+.day-date { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.day-tldr { font-size: 12px; color: var(--text); margin-top: 3px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.day-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.tag-pill {
+  font-size: 10px; font-family: var(--mono); padding: 1px 6px;
+  border-radius: 2px; background: var(--dim); color: var(--muted); cursor: pointer;
+}
+.tag-pill:hover { background: var(--border); color: var(--text); }
+.tag-pill.active-filter { background: var(--accent); color: #000; }
+#filter-bar { padding: 10px 10px 6px; border-bottom: 1px solid var(--border); }
+#filter-bar p { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+#active-filter-display { font-size: 11px; color: var(--accent); font-family: var(--mono); min-height: 14px; }
+
+/* ── Views ── */
+#content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.view { flex: 1; overflow-y: auto; padding: 32px 40px; display: none; }
+.view.active { display: block; }
+
+/* ── Notes view ── */
+#note-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+#note-date { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+#note-tldr { font-size: 18px; font-weight: 300; margin-top: 6px; color: var(--text); line-height: 1.4; }
+#note-tags-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+#note-body h2 { font-size: 14px; font-weight: 600; margin: 24px 0 10px;
+  color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--mono); }
+#note-body p { font-size: 14px; line-height: 1.75; margin-bottom: 10px; color: #c8c6c0; }
+#note-body ul, #note-body ol { padding-left: 18px; margin-bottom: 12px; }
+#note-body li { font-size: 14px; line-height: 1.75; color: #c8c6c0; }
+#note-body strong { color: var(--text); font-weight: 600; }
+#note-body code { font-family: var(--mono); font-size: 12px; background: var(--surface2);
+  padding: 1px 5px; border-radius: 3px; color: var(--accent2); }
+#note-body pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px; overflow-x: auto; margin-bottom: 14px; }
+#note-body pre code { background: none; padding: 0; color: var(--text); font-size: 12px; }
+#note-body a { color: var(--accent2); text-decoration: none; }
+#note-body a:hover { text-decoration: underline; }
+#note-body details { background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 10px 14px; margin-top: 10px; }
+#note-body summary { font-size: 12px; font-family: var(--mono); cursor: pointer; color: var(--muted); }
+#empty-note { display: flex; align-items: center; justify-content: center; height: 300px;
+  color: var(--muted); font-size: 14px; font-family: var(--mono); }
+
+/* ── Timeline view ── */
+#timeline-container { position: relative; padding-left: 40px; }
+.tl-month { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--muted); margin: 28px 0 12px; }
+.tl-item { display: flex; gap: 16px; margin-bottom: 12px; align-items: flex-start; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim);
+  margin-top: 5px; flex-shrink: 0; position: relative; left: -40px; margin-right: -8px; }
+.tl-dot.has-finding { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+.tl-dot.active { background: var(--accent); }
+.tl-card { flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 14px; cursor: pointer; transition: border-color 0.1s; }
+.tl-card:hover { border-color: var(--border); background: var(--surface2); }
+.tl-card.active { border-color: var(--accent); }
+.tl-date { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tl-summary { font-size: 13px; color: var(--text); margin-top: 4px; line-height: 1.5; }
+.tl-finding { font-size: 12px; color: var(--accent3); margin-top: 5px; font-family: var(--mono); }
+.tl-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+
+/* ── Topics graph view ── */
+#graph-view { overflow: hidden; }
+#graph-svg { width: 100%; height: 100%; }
+.graph-node circle { cursor: pointer; transition: r 0.2s; }
+.graph-node text { font-family: var(--mono); font-size: 11px; fill: var(--muted); pointer-events: none; }
+.graph-link { stroke: var(--dim); stroke-width: 1; }
+
+/* ── Advisor updates view ── */
+.update-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 20px 24px; margin-bottom: 16px; }
+.update-date { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+.update-card h2 { font-size: 13px; font-weight: 600; color: var(--accent); margin: 16px 0 6px;
+  text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--mono); }
+.update-card p { font-size: 13px; color: #c8c6c0; line-height: 1.7; margin-bottom: 8px; }
+.update-card ul { padding-left: 18px; }
+.update-card li { font-size: 13px; color: #c8c6c0; line-height: 1.7; }
+.update-card strong { color: var(--text); }
+.copy-btn { margin-top: 14px; padding: 7px 16px; font-size: 12px; font-family: var(--mono);
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; cursor: pointer; }
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Chat panel ── */
+#chat-panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 380px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.2s ease; z-index: 200;
+}
+#chat-panel.open { transform: translateX(0); }
+#chat-head { padding: 14px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; }
+#chat-head h3 { font-size: 13px; font-weight: 600; font-family: var(--mono); color: var(--accent); }
+#chat-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+#chat-close:hover { color: var(--text); }
+#chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.cmsg { max-width: 92%; padding: 9px 12px; border-radius: 6px; font-size: 13px; line-height: 1.6; }
+.cmsg.user { background: var(--accent); color: #000; align-self: flex-end; font-weight: 500; }
+.cmsg.assistant { background: var(--surface2); border: 1px solid var(--border); align-self: flex-start; color: var(--text); }
+#chat-row { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+#chat-in {
+  flex: 1; padding: 8px 12px; font-size: 13px; font-family: var(--sans);
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg);
+  color: var(--text); outline: none; resize: none;
+}
+#chat-in:focus { border-color: var(--accent); }
+#chat-send { padding: 8px 14px; background: var(--accent); color: #000; border: none;
+  border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--sans); }
+#chat-send:hover { background: #86efac; }
+#chat-pw-screen { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+#chat-pw-screen p { font-size: 13px; color: var(--muted); }
+#chat-pw-screen input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--text); font-size: 13px; outline: none; font-family: var(--mono); }
+#chat-pw-screen input:focus { border-color: var(--accent); }
+#chat-pw-screen button { padding: 8px; background: var(--accent); color: #000; border: none;
+  border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
+#pw-err { color: var(--red); font-size: 12px; font-family: var(--mono); display: none; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="nav">
+  <span id="nav-logo">AK / research-notes</span>
+  <button class="nav-tab active" data-view="notes">Notes</button>
+  <button class="nav-tab" data-view="timeline">Timeline</button>
+  <button class="nav-tab" data-view="topics">Topics</button>
+  <button class="nav-tab" data-view="advisor">Advisor updates</button>
+  <input id="nav-search" type="text" placeholder="Search…" oninput="searchNotes()">
+  <button id="chat-open-btn" onclick="openChat()">Ask the notes ↗</button>
+</div>
+
+<div id="workspace">
+  <div id="sidebar">
+    <div id="filter-bar">
+      <p>Filter by topic</p>
+      <div id="active-filter-display">All notes</div>
+    </div>
+    <div id="sidebar-inner"></div>
+  </div>
+
+  <div id="content">
+
+    <!-- Notes view -->
+    <div id="view-notes" class="view active">
+      <div id="note-header">
+        <div id="note-date" style="font-family:var(--mono);font-size:12px;color:var(--muted);">Select a note</div>
+        <div id="note-tldr" style="font-size:14px;color:var(--muted);margin-top:4px;">↖ Choose a day from the sidebar</div>
+        <div id="note-tags-row"></div>
+      </div>
+      <div id="note-body"></div>
+    </div>
+
+    <!-- Timeline view -->
+    <div id="view-timeline" class="view">
+      <div id="timeline-container"></div>
+    </div>
+
+    <!-- Topics graph view -->
+    <div id="view-topics" class="view" style="padding:0;overflow:hidden;height:100%;">
+      <svg id="graph-svg"></svg>
+    </div>
+
+    <!-- Advisor updates view -->
+    <div id="view-advisor" class="view">
+      <h2 style="font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:20px;">Weekly advisor update drafts</h2>
+      <div id="advisor-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Chat panel -->
+<div id="chat-panel">
+  <div id="chat-head">
+    <h3>Ask the notes</h3>
+    <button id="chat-close" onclick="closeChat()" aria-label="Close">×</button>
+  </div>
+  <div id="chat-pw-screen">
+    <p>Enter the chat password:</p>
+    <input type="password" id="pw-in" placeholder="password" onkeydown="if(event.key==='Enter')checkPw()">
+    <button onclick="checkPw()">Unlock</button>
+    <span id="pw-err">Incorrect password.</span>
+  </div>
+  <div id="chat-ui" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+    <div id="chat-msgs"></div>
+    <div id="chat-row">
+      <textarea id="chat-in" rows="2" placeholder="What was I working on last week?…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <button id="chat-send" onclick="sendChat()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+const OWNER      = 'Akashkharita';
+const REPO       = 'dev-notes';
+const BRANCH     = 'main';
+const WORKER_URL = '';       // fill in after deploying Cloudflare Worker
+const CHAT_PW    = '';       // fill in — same as CHAT_PASSWORD Worker secret
+// ───────────────────────────────────────────────────────────────────────────
+
+let allNotes = [];       // [{date, rawUrl, tldr, tags}]
+let noteCache = {};      // date → markdown text
+let advisorNotes = [];   // [{date, rawUrl}]
+let activeDate = null;
+let activeFilter = null;
+let chatHistory = [];
+
+// ── Init ────────────────────────────────────────────────────────────────────
+async function init() {
+  const [tree, indexData] = await Promise.all([
+    fetchJSON(`https://api.github.com/repos/${OWNER}/${REPO}/git/trees/${BRANCH}?recursive=1`),
+    fetchRaw(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/notes/index.json`).catch(() => '{}'),
+  ]);
+
+  const index = JSON.parse(indexData);
+
+  allNotes = (tree.tree || [])
+    .filter(f => f.path.startsWith('notes/') && f.path.endsWith('.md'))
+    .map(f => {
+      const date = f.path.replace('notes/','').replace('.md','');
+      const meta = index[date] || {};
+      return { date, path: f.path,
+               rawUrl: `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${f.path}`,
+               tldr: meta.tldr || '', tags: meta.tags || [] };
+    })
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  advisorNotes = (tree.tree || [])
+    .filter(f => f.path.startsWith('advisor-updates/') && f.path.endsWith('.md'))
+    .map(f => ({
+      date: f.path.replace('advisor-updates/','').replace('.md',''),
+      rawUrl: `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${f.path}`,
+    }))
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  renderSidebar();
+  renderTimeline();
+  renderTopicGraph();
+
+  if (allNotes.length > 0) openNote(allNotes[0]);
+}
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  return r.json();
+}
+async function fetchRaw(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(r.status);
+  return r.text();
+}
+
+// ── Sidebar ─────────────────────────────────────────────────────────────────
+function renderSidebar(filterTag=null, query='') {
+  const el = document.getElementById('sidebar-inner');
+  el.innerHTML = '';
+
+  const filtered = allNotes.filter(n => {
+    const matchTag = !filterTag || n.tags.includes(filterTag);
+    const matchQ   = !query || n.date.includes(query) ||
+                     n.tldr.toLowerCase().includes(query) ||
+                     n.tags.some(t => t.toLowerCase().includes(query)) ||
+                     (noteCache[n.date]||'').toLowerCase().includes(query);
+    return matchTag && matchQ;
+  });
+
+  filtered.forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'day-item' + (n.date === activeDate ? ' active' : '');
+    div.innerHTML = `
+      <div class="day-date">${n.date}</div>
+      <div class="day-tldr">${n.tldr || 'No summary yet'}</div>
+      <div class="day-tags">${(n.tags||[]).slice(0,4).map(t =>
+        `<span class="tag-pill${activeFilter===t?' active-filter':''}" onclick="filterByTag(event,'${t}')">${t}</span>`
+      ).join('')}</div>`;
+    div.onclick = (e) => { if (!e.target.classList.contains('tag-pill')) openNote(n); };
+    el.appendChild(div);
+  });
+}
+
+function filterByTag(e, tag) {
+  e.stopPropagation();
+  activeFilter = activeFilter === tag ? null : tag;
+  document.getElementById('active-filter-display').textContent = activeFilter ? `#${activeFilter}` : 'All notes';
+  renderSidebar(activeFilter, document.getElementById('nav-search').value);
+}
+
+function searchNotes() {
+  renderSidebar(activeFilter, document.getElementById('nav-search').value.toLowerCase());
+}
+
+// ── Note reader ─────────────────────────────────────────────────────────────
+async function openNote(note) {
+  activeDate = note.date;
+  renderSidebar(activeFilter, document.getElementById('nav-search').value);
+  switchView('notes');
+
+  document.getElementById('note-date').textContent = note.date;
+  document.getElementById('note-tldr').textContent = note.tldr || '…';
+
+  const tagsRow = document.getElementById('note-tags-row');
+  tagsRow.innerHTML = (note.tags||[]).map(t =>
+    `<span class="tag-pill" onclick="filterByTag(event,'${t}')">${t}</span>`).join('');
+
+  if (!noteCache[note.date]) {
+    document.getElementById('note-body').innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:12px;">Loading…</p>';
+    noteCache[note.date] = await fetchRaw(note.rawUrl);
+  }
+
+  const md = noteCache[note.date];
+  // Strip first heading (date) and TL;DR line (shown in header)
+  const body = md
+    .replace(/^#\s+\d{4}-\d{2}-\d{2}\s*\n/, '')
+    .replace(/\*\*TL;DR:\*\*.+/, '');
+
+  document.getElementById('note-body').innerHTML = marked.parse(body);
+}
+
+// ── Timeline ─────────────────────────────────────────────────────────────────
+function renderTimeline() {
+  const container = document.getElementById('timeline-container');
+  container.innerHTML = '';
+
+  // Group by month
+  const byMonth = {};
+  allNotes.forEach(n => {
+    const m = n.date.slice(0,7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(n);
+  });
+
+  Object.entries(byMonth).sort((a,b) => b[0].localeCompare(a[0])).forEach(([month, notes]) => {
+    const mLabel = document.createElement('div');
+    mLabel.className = 'tl-month';
+    const d = new Date(month + '-01');
+    mLabel.textContent = d.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+    container.appendChild(mLabel);
+
+    // Vertical line
+    const line = document.createElement('div');
+    line.style.cssText = 'position:absolute;left:32px;width:1px;background:var(--dim);top:0;bottom:0;pointer-events:none;';
+    container.style.position = 'relative';
+
+    notes.forEach(n => {
+      const hasResult = n.tags.length > 0 && (noteCache[n.date]||'').includes('📊');
+      const item = document.createElement('div');
+      item.className = 'tl-item';
+      item.innerHTML = `
+        <div class="tl-dot${hasResult?' has-finding':''}${n.date===activeDate?' active':''}"></div>
+        <div class="tl-card${n.date===activeDate?' active':''}">
+          <div class="tl-date">${n.date}</div>
+          <div class="tl-summary">${n.tldr || 'No summary'}</div>
+          <div class="tl-tags">${(n.tags||[]).map(t=>`<span class="tag-pill">${t}</span>`).join('')}</div>
+        </div>`;
+      item.querySelector('.tl-card').onclick = () => openNote(n);
+      container.appendChild(item);
+    });
+  });
+
+  if (allNotes.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:13px;font-family:var(--mono);">No notes yet.</p>';
+  }
+}
+
+// ── Topic graph ────────────────────────────────────────────────────────────
+function renderTopicGraph() {
+  const svg = document.getElementById('graph-svg');
+  const W = svg.parentElement.clientWidth || 700;
+  const H = svg.parentElement.clientHeight || 500;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = '';
+
+  // Count co-occurrences
+  const tagCounts = {};
+  const coOccur = {};
+  allNotes.forEach(n => {
+    (n.tags||[]).forEach(t => { tagCounts[t] = (tagCounts[t]||0) + 1; });
+    for (let i=0; i<(n.tags||[]).length; i++) {
+      for (let j=i+1; j<n.tags.length; j++) {
+        const key = [n.tags[i], n.tags[j]].sort().join('||');
+        coOccur[key] = (coOccur[key]||0) + 1;
+      }
+    }
+  });
+
+  if (Object.keys(tagCounts).length === 0) {
+    svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-family="var(--mono)" font-size="13" fill="var(--muted)">No topic data yet — add some notes first.</text>`;
+    return;
+  }
+
+  const nodes = Object.entries(tagCounts).map(([id, count]) => ({id, count}));
+  const links = Object.entries(coOccur)
+    .filter(([,v]) => v > 0)
+    .map(([k,v]) => { const [s,t] = k.split('||'); return {source:s, target:t, value:v}; });
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(90))
+    .force('charge', d3.forceManyBody().strength(-180))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collision', d3.forceCollide().radius(d => 10 + d.count * 4));
+
+  const ns = d3.select(svg);
+
+  const link = ns.selectAll('.graph-link')
+    .data(links).enter().append('line').attr('class','graph-link')
+    .attr('stroke-width', d => Math.min(d.value, 3));
+
+  const node = ns.selectAll('.graph-node')
+    .data(nodes).enter().append('g').attr('class','graph-node')
+    .call(d3.drag()
+      .on('start', (e,d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end',   (e,d) => { if (!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  node.append('circle')
+    .attr('r', d => 6 + d.count * 3)
+    .attr('fill', d => d.count > 5 ? '#4ade80' : d.count > 2 ? '#60a5fa' : '#3a3a3a')
+    .attr('fill-opacity', 0.85)
+    .on('click', (e,d) => filterByTag({stopPropagation:()=>{}}, d.id));
+
+  node.append('text')
+    .text(d => d.id)
+    .attr('text-anchor','middle')
+    .attr('dy', d => -(8 + d.count * 3));
+
+  sim.on('tick', () => {
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+        .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+}
+
+// ── Advisor updates ──────────────────────────────────────────────────────────
+async function loadAdvisorUpdates() {
+  const el = document.getElementById('advisor-list');
+  if (advisorNotes.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-family:var(--mono);font-size:13px;">No weekly updates yet. They generate every Friday automatically.</p>';
+    return;
+  }
+  el.innerHTML = '<p style="color:var(--muted);font-size:12px;font-family:var(--mono);">Loading…</p>';
+  const updates = await Promise.all(advisorNotes.map(n => fetchRaw(n.rawUrl).then(md => ({date:n.date, md}))));
+  el.innerHTML = '';
+  updates.forEach(u => {
+    const body = marked.parse(u.md.replace(/^#.*\n/, '').replace(/^>.*\n---\n/, ''));
+    const card = document.createElement('div');
+    card.className = 'update-card';
+    card.innerHTML = `
+      <div class="update-date">${u.date} — weekly update draft</div>
+      <div>${body}</div>
+      <button class="copy-btn" onclick="copyUpdate(this, \`${u.md.replace(/`/g,"'")}\`)">Copy draft</button>`;
+    el.appendChild(card);
+  });
+}
+
+function copyUpdate(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy draft', 2000);
+  });
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.onclick = () => switchView(tab.dataset.view);
+});
+
+function switchView(name) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view===name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id===`view-${name}`));
+  if (name === 'advisor') loadAdvisorUpdates();
+  if (name === 'topics') renderTopicGraph();
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+function openChat() { document.getElementById('chat-panel').classList.add('open'); }
+function closeChat() { document.getElementById('chat-panel').classList.remove('open'); }
+
+function checkPw() {
+  const val = document.getElementById('pw-in').value;
+  if (val === CHAT_PW || CHAT_PW === '') {
+    document.getElementById('chat-pw-screen').style.display = 'none';
+    document.getElementById('chat-ui').style.display = 'flex';
+    addChatMsg('assistant', 'Hi Akash! Ask me anything about your work — "what was I working on last week?", "summarize my PhaseNet benchmark progress", etc.');
+  } else {
+    document.getElementById('pw-err').style.display = '';
+  }
+}
+
+function addChatMsg(role, text) {
+  const el = document.createElement('div');
+  el.className = `cmsg ${role}`;
+  el.textContent = text;
+  document.getElementById('chat-msgs').appendChild(el);
+  el.scrollIntoView({behavior:'smooth'});
+  return el;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-in');
+  const q = input.value.trim();
+  if (!q) return;
+  if (!WORKER_URL) { alert('WORKER_URL not configured. See README to deploy the Cloudflare Worker.'); return; }
+  input.value = '';
+  addChatMsg('user', q);
+  chatHistory.push({role:'user', content:q});
+  const thinking = addChatMsg('assistant', '…');
+
+  try {
+    const r = await fetch(`${WORKER_URL}/chat`, {
+      method:'POST',
+      headers: {'Content-Type':'application/json', 'X-Chat-Password': CHAT_PW},
+      body: JSON.stringify({messages: chatHistory}),
+    });
+    const data = await r.json();
+    const answer = data.answer || data.error || 'No response.';
+    thinking.textContent = answer;
+    chatHistory.push({role:'assistant', content:answer});
+  } catch(e) {
+    thinking.textContent = `Error: ${e.message}`;
+  }
+}
+
+marked.setOptions({breaks:true, gfm:true});
+init().catch(e => {
+  document.getElementById('note-body').innerHTML =
+    `<p style="color:var(--red);font-family:var(--mono);font-size:13px;">Failed to load: ${e.message}</p>`;
+});
+</script>
+</body>
+</html>
