@@ -4,11 +4,12 @@
       "PhaseNet",
       "SeisBench",
       "benchmark",
+      "Cascadia-HPC",
       "dataset-download",
       "waveform-processing",
-      "Cascadia-HPC",
+      "visualization",
       "recall-analysis"
     ],
-    "tldr": "Completed a full audit of the SeisBench benchmark dataset pool (12 datasets, ~8.6M total traces), locked in stratification bins for balanced sampling, and identified `instancecounts` S-label gap (61.6% coverage) and missing `pisdl` as key issues to resolve before benchmark construction."
+    "tldr": "Built the benchmark dataset characterization notebook for PhaseNet retraining, inventorying 12+ SeisBench datasets totaling >8M traces with P/S coverage stats and physics distribution plots, while also debugging the dev-notes GitHub Actions workflow for private repo access."
   }
 }
