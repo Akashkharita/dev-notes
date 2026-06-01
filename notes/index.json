@@ -1,11 +1,10 @@
 {
   "2026-06-01": {
     "tags": [
-      "Cascadia-HPC",
-      "paper-writing",
-      "QuakeXNet",
-      "benchmark"
+      "tooling",
+      "GitHub-Actions",
+      "dev-infrastructure"
     ],
-    "tldr": "Today was entirely infrastructure work \u2014 added GitHub Actions workflows, fixed PAT auth for private repo access, and configured `index.html` serving in the dev-notes repo; no research experiments ran."
+    "tldr": "Spent the full day debugging a GitHub Actions workflow in `dev-notes` to enable PAT-authenticated fetching of private repos; no research experiments were run."
   }
 }
