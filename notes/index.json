@@ -1,15 +1,16 @@
 {
   "2026-06-01": {
     "tags": [
-      "PhaseNet",
-      "SeisBench",
-      "benchmark",
-      "dataset-download",
-      "waveform-processing",
-      "recall-analysis",
-      "visualization",
-      "Cascadia-HPC"
+      "`PhaseNet`",
+      "`SeisBench`",
+      "`benchmark`",
+      "`waveform-processing`",
+      "`dataset-download`",
+      "`Cascadia-HPC`",
+      "`recall-analysis`",
+      "`visualization`",
+      "`phasenet-retrain`"
     ],
-    "tldr": "Built a structured daily research logging system (dev-notes) and completed a full audit of SeisBench benchmark datasets \u2014 enumerating 12+ datasets, 16 PhaseNet weight sets, and P/S arrival coverage statistics \u2014 in preparation for PhaseNet generalization evaluation starting tomorrow."
+    "tldr": "Built a structured automated research logger and integrated Claude Code on Cascadia, while auditing 12+ SeisBench benchmark datasets (up to 4.14M traces) and defining the canonical binning scheme for upcoming PhaseNet generalization evaluation."
   }
 }
