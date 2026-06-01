@@ -21,3 +21,11 @@ while True:
 print(f"Total repos found: {len(repos)}")
 for repo in repos:
     print(f"  {'[private]' if repo['private'] else '[public] '} {repo['full_name']}")
+
+# Test direct access to private org repo
+r = requests.get("https://api.github.com/repos/Denolle-Lab/phasenet-retrain", headers=GH)
+print(f"\nDirect access to phasenet-retrain: {r.status_code}")
+if r.status_code == 200:
+    print("  ✅ Can access it — hardcoding will work")
+else:
+    print("  ❌ Cannot access it — need org approval from Marine")
