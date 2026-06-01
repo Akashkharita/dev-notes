@@ -2,7 +2,7 @@ name: Generate Daily Research Note
 
 on:
   schedule:
-    - cron: '59 23 * * *'   # 11:59 PM UTC daily — adjust for your timezone
+    - cron: '59 23 * * *'
   workflow_dispatch:
 
 permissions:
@@ -11,25 +11,26 @@ permissions:
 jobs:
   generate-note:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: pip install anthropic requests paramiko nbformat
 
+      - name: Debug repos
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: python scripts/debug_repos.py
+
       - name: Generate daily research note
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_USERNAME: Akashkharita
-          # SSH access to Cascadia for Slurm logs
           CASCADIA_HOST: cascadia.ess.washington.edu
           CASCADIA_USER: ak287
           CASCADIA_SSH_KEY: ${{ secrets.CASCADIA_SSH_KEY }}
@@ -40,6 +41,5 @@ jobs:
           git config user.name "research-notes bot"
           git config user.email "actions@github.com"
           git add notes/
-          git diff --staged --quiet || git commit -m "📝 Research note $(date -u +%Y-%m-%d)"
+          git diff --staged --quiet || git commit -m "📝 Daily note $(date -u +%Y-%m-%d)"
           git push
-
