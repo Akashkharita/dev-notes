@@ -63,5 +63,9 @@
       "enveloc"
     ],
     "tldr": "`finetune_jma_wc_global_v3` achieves the best P-MAE (0.368 s) across all 19 benchmarked PhaseNet models, narrowly beating its `jma_wc` parent (0.374 s) with competitive recall (87.2%) and MCC (0.747)."
+  },
+  "2026-06-13": {
+    "tags": [],
+    "tldr": ""
   }
 }
