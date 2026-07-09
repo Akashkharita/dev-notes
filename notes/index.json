@@ -163,5 +163,19 @@
   "2026-07-08": {
     "tags": [],
     "tldr": ""
+  },
+  "2026-07-09": {
+    "tags": [
+      "PhaseNet",
+      "SeisBench",
+      "benchmark",
+      "recall-analysis",
+      "labelerrors",
+      "dataset-download",
+      "waveform-processing",
+      "Cascadia-HPC",
+      "paper-writing"
+    ],
+    "tldr": "A silent dtype bug in the leakage audit script caused it to always report 0% contamination \u2014 masking 28\u201395% real train/benchmark event leakage in all deployed PhaseNet manifests for mlaapde, aq2009gm, and cwa; all manifests need to be rebuilt."
   }
 }
