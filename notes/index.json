@@ -329,5 +329,16 @@
   "2026-08-16": {
     "tags": [],
     "tldr": ""
+  },
+  "2026-08-17": {
+    "tags": [
+      "QuakeXNet",
+      "PhaseNet",
+      "SeisBench",
+      "PNSN",
+      "benchmark",
+      "waveform-processing"
+    ],
+    "tldr": "Housekeeping day \u2014 vendored QuakeXNet v3 weights into the detection repo for reproducible deployment, and relocated the canonical PhaseNet v7 checkpoint to `models/` per advisor feedback."
   }
 }
