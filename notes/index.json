@@ -340,5 +340,9 @@
       "waveform-processing"
     ],
     "tldr": "Housekeeping day \u2014 vendored QuakeXNet v3 weights into the detection repo for reproducible deployment, and relocated the canonical PhaseNet v7 checkpoint to `models/` per advisor feedback."
+  },
+  "2026-08-18": {
+    "tags": [],
+    "tldr": ""
   }
 }
