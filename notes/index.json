@@ -501,5 +501,9 @@
       "labelerrors"
     ],
     "tldr": "Committed a SU picker data prep and training plan to `surfcat`, laying the groundwork for a dedicated surface-event phase picker trained on the 25-year Pacific Northwest catalog."
+  },
+  "2026-09-25": {
+    "tags": [],
+    "tldr": ""
   }
 }
